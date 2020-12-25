@@ -1,0 +1,123 @@
+---
+title: "Reproducible Research: Peer Assessment 1"
+output: 
+html_document:
+keep_md: true
+---
+## Loading and preprocessing the data  
+First, we are trying to read the data that is located in the activity folder. A preview of the data is also shown.
+```{r load, cache = TRUE}
+activity <- read.csv("./activity/activity.csv")
+head(activity,3)
+```
+
+## What is mean total number of steps taken per day?  
+The code below shows the histogram of average number of steps taken per day using the tapply function to find the total number of steps per day. The mean and median is also labeled on the graph.
+```{r mean}
+daily.steps <- tapply(activity$steps, activity$date, sum, na.rm = TRUE)
+hist(daily.steps)
+
+mean.steps <- mean(daily.steps, na.rm = TRUE)
+median.steps <- median(daily.steps, na.rm = TRUE)
+
+legend(0,25,legend = c("Mean: 9354", "Median: 10395"), col = c("blue", "red"), lty = 2:2, lwd = 2:2)
+
+abline(v = mean.steps, col = "blue", lwd = 2, lty = 2)
+abline(v = median.steps, col = "red", lwd = 2, lty = 2)
+```
+
+## What is the average daily activity pattern?  
+The script below shows the time-series of the average daily activity pattern.
+```{r pattern}
+pattern <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(pattern ~ activity$interval[1:288], type = "l")
+
+points(835, max(pattern), pch = 16)
+
+max.time = which.max(pattern)
+
+legend(1550,200, legend = "Max Interval is at 8:35", pch = 16)
+
+times <- activity$interval[1:288]
+pattern <- cbind(times, pattern)
+```
+
+
+## Imputing missing values
+**Part 1: Finding the total amount of missing value**  
+The script below outputs the total amount of missing values in the data frame.
+```{r missing}
+# Part 1
+missing.values <- is.na(activity$steps)
+totalNA <- sum(missing.values)
+print(totalNA)
+```
+
+**Part 2: Filling the missing values**  
+We first make a copy of activity to a data variable named `new_activity`. We then use a for loop to fill in the missing values by referencing the interval mean from above.
+```{r filling}
+new_activity <- activity
+for (i in 1:nrow(new_activity)) {
+  if (missing.values[i]) {
+    new_activity$steps[i] <- subset(pattern, times == new_activity$interval[i])[1,2]
+  }
+}
+```
+
+In the next part, we did the same thing as part 1.
+```{r average}
+new.daily.steps <- tapply(new_activity$steps, new_activity$date, sum, na.rm = TRUE)
+hist(daily.steps)
+
+mean.steps <- mean(new.daily.steps, na.rm = TRUE)
+median.steps <- median(new.daily.steps, na.rm = TRUE)
+
+print("Mean steps:")
+print(mean.steps)
+print("Median steps:")
+print(median.steps)
+
+legend(0,25,legend = "Mean and Median: 10766.19", col = "blue", lty = 2, lwd = 2)
+
+abline(v = mean.steps, col = "blue", lwd = 2, lty = 2)
+```
+
+From the graph above, we could tell that filling in the missing values by the mean of each 5 minute interval has made the mean and median the same value.
+
+
+## Are there differences in activity patterns between weekdays and weekends?
+```{r weekend}
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+
+as_weekday <- function(date) {
+  if (weekdays(date) == "Saturday" | weekdays(date) == "Sunday") {
+    return ("Weekend")
+  }
+  else {
+    return ("Weekday")
+  }
+}
+
+activity$weekday <- lapply(activity$date, as_weekday)
+
+weekday.activity <- subset(activity, weekday == "Weekday")
+weekend.activity <- subset(activity, weekday == "Weekend")
+
+weekday.pattern <- tapply(weekday.activity$steps, weekday.activity$interval, mean, na.rm = TRUE)
+weekend.pattern <- tapply(weekend.activity$steps, weekend.activity$interval, mean, na.rm = TRUE)
+
+par(mfrow = c(2,1))
+
+plot(weekday.pattern ~ weekday.activity$interval[1:288], 
+     type = "l", main = "Weekday", xlab = "Interval", ylab = "Activity")
+plot(weekend.pattern ~ weekend.activity$interval[1:288],
+     type = "l", main = "Weekend", xlab = "Interval", ylab = "Activity")
+```
+
+
+
+
+
+
+
+
